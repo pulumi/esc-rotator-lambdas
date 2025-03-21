@@ -1,0 +1,87 @@
+name: esc-rotator-lambda
+description: >-
+  This pulumi program will deploy the rotation lambda into your VPC and set up a
+  role for ESC to assume.
+runtime: yaml
+
+config:
+  trustedAccount:
+    default: "arn:aws:iam::616138583583:root"
+  signingProfileVersionArn:
+    default: "arn:aws:signer:us-west-2:616138583583:/signing-profiles/pulumi_esc_dev_20250321013308505700000001/yNMKxEZNc7"
+
+resources:
+  codeSigningConfig:
+    type: aws:lambda:CodeSigningConfig
+    properties:
+      description: >-
+        Pulumi ESC rotator-lambda signature -
+        https://github.com/pulumi/esc-rotator-lambdas
+      allowedPublishers:
+        signingProfileVersionArns:
+          - ${signingProfileVersionArn}
+      policies:
+        untrustedArtifactOnDeployment: Enforce
+
+  lambdaExecRole:
+    type: aws:iam:Role
+    properties:
+      assumeRolePolicy:
+        'fn::toJSON':
+          Version: "2012-10-17"
+          Statement:
+            - Action: sts:AssumeRole
+              Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+      managedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  lambda:
+    type: aws:lambda:Function
+    properties:
+      description: >-
+        The rotator lambda proxies a secret rotation request from Pulumi ESC to a service within your VPC.
+      s3Bucket: "public-esc-rotator-lambdas-dev-${aws:region}"
+      s3Key: "latest.zip"
+      codeSigningConfigArn: ${codeSigningConfig.arn}
+      runtime: nodejs22.x
+      handler: index.handler
+      role: ${lambdaExecRole.arn}
+
+  assumedRole:
+    type: aws:iam:Role
+    properties:
+      name: PulumiESCRotatorLambdaInvocationRole
+      description: Allow Pulumi ESC to invoke/manage the rotator lambda
+      assumeRolePolicy:
+        fn::toJSON:
+          Version: "2012-10-17"
+          Statement:
+            - Action: sts:AssumeRole
+              Effect: Allow
+              Principal:
+                AWS: ${trustedAccount}
+      inlinePolicies:
+        - policy:
+            fn::toJSON:
+              Version: "2012-10-17"
+              Statement:
+                - Sid: AllowPulumiToInvokeLambda
+                  Effect: Allow
+                  Action:
+                    - lambda:GetFunction
+                    - lambda:InvokeFunction
+                  Resource: ${lambda.arn}
+                - Sid: AllowPulumiToUpdateLambda
+                  Effect: Allow
+                  Action: lambda:UpdateFunctionCode
+                  Resource: ${lambda.arn}
+                - Sid: AllowPulumiToFetchUpdatedLambdaArchives
+                  Effect: Allow
+                  Action: s3:GetObject
+                  Resource: arn:aws:s3:::public-pulumi-esc-rotator-lambdas-*/*
+
+outputs:
+  lambdaArn: ${lambda.arn}
+  assumedRoleArn: ${assumedRole.arn}

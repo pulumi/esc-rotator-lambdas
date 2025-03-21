@@ -1,0 +1,1 @@
+This pulumi program will deploy the rotation lambda into your VPC and set up a role for ESC to assume.
