@@ -4,11 +4,18 @@ description: >-
   role for ESC to assume.
 runtime: yaml
 
-config:
-  trustedAccount:
-    default: "arn:aws:iam::616138583583:root"
-  signingProfileVersionArn:
-    default: "arn:aws:signer:us-west-2:616138583583:/signing-profiles/pulumi_esc_dev_20250321013308505700000001/yNMKxEZNc7"
+template:
+  config:
+    aws:region:
+      description: The AWS region to deploy into
+      default: us-west-2
+    signingProfileVersionArn:
+      description: This signing profile is used to verify the authenticity of the lambda bundle
+      default: "arn:aws:signer:us-west-2:616138583583:/signing-profiles/pulumi_esc_dev_20250321013308505700000001/yNMKxEZNc7"
+    trustedAccount:
+      description: This account will be allowed to invoke the lambda
+      default: "arn:aws:iam::616138583583:root"
+
 
 resources:
   codeSigningConfig:
