@@ -1,7 +1,7 @@
 name: esc-rotator-lambda
 description: >-
-  This pulumi program will deploy the rotation lambda into your VPC and set up a
-  role for ESC to assume.
+  This pulumi program will deploy the rotation lambda into your VPC and
+  will set up a role to allow ESC to invoke it.
 runtime: yaml
 
 template:
@@ -9,13 +9,24 @@ template:
     aws:region:
       description: The AWS region to deploy into
       default: us-west-2
+    vpcId:
+      description: The VPC ID where the Lambda will be deployed and can access RDS instances
+      type: string
+    subnetIds:
+      description: List of subnet IDs where the Lambda will be deployed (private subnets recommended)
+      type: array
+    rdsSecurityGroupIds:
+      description: Security group IDs of the RDS instances the Lambda needs to access
+      type: array
+    rdsPort:
+      description: The port that RDS is listening on (default is for MySQL)
+      default: 3306
     signingProfileVersionArn:
       description: This signing profile is used to verify the authenticity of the lambda bundle
       default: "arn:aws:signer:us-west-2:616138583583:/signing-profiles/pulumi_esc_dev_20250321013308505700000001/yNMKxEZNc7"
     trustedAccount:
       description: This account will be allowed to invoke the lambda
       default: "arn:aws:iam::616138583583:root"
-
 
 resources:
   codeSigningConfig:
@@ -44,6 +55,16 @@ resources:
       managedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
+  lambdaSecurityGroup:
+    type: aws:ec2:SecurityGroup
+    properties:
+      vpcId: ${vpcId}
+      description: Security group for Pulumi ESC rotation lambda
+      ingress:
+        - { protocol: "tcp", fromPort: ${rdsPort}, toPort: ${rdsPort}, securityGroups: ${rdsSecurityGroupIds} },
+      egress:
+        - { protocol: "-1", fromPort: 0, toPort: 0, cidrBlocks: ["0.0.0.0/0"] }
+
   lambda:
     type: aws:lambda:Function
     properties:
@@ -55,6 +76,10 @@ resources:
       runtime: nodejs22.x
       handler: index.handler
       role: ${lambdaExecRole.arn}
+      vpcConfig:
+        subnetIds: ${subnetIds}
+        securityGroupIds:
+         - ${lambdaSecurityGroup.id}
 
   assumedRole:
     type: aws:iam:Role
