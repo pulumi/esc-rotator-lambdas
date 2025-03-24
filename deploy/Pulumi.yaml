@@ -28,6 +28,14 @@ template:
       description: This account will be allowed to invoke the lambda
       default: "arn:aws:iam::616138583583:root"
 
+variables:
+  codeArtifact:
+    fn::invoke:
+      function: aws:s3:getObject
+      arguments:
+        bucket: "public-esc-rotator-lambdas-dev-${aws:region}"
+        key: "latest.zip"
+
 resources:
   codeSigningConfig:
     type: aws:lambda:CodeSigningConfig
@@ -70,8 +78,9 @@ resources:
     properties:
       description: >-
         The rotator lambda proxies a secret rotation request from Pulumi ESC to a service within your VPC.
-      s3Bucket: "public-esc-rotator-lambdas-dev-${aws:region}"
-      s3Key: "latest.zip"
+      s3Bucket: ${codeArtifact.bucket}
+      s3Key: ${codeArtifact.key}
+      s3ObjectVersion: ${codeArtifact.versionId}
       codeSigningConfigArn: ${codeSigningConfig.arn}
       runtime: nodejs22.x
       handler: index.handler
