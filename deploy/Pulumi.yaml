@@ -29,10 +29,10 @@ template:
       default: "aws-lambda/latest.zip"
     lambdaArchiveSigningProfileVersionArn:
       description: This signing profile is used to verify the authenticity of the lambda bundle
-      default: "arn:aws:signer:us-west-2:616138583583:/signing-profiles/pulumi_esc_dev_20250321013308505700000001/yNMKxEZNc7"
+      default: "arn:aws:signer:us-west-2:388588623842:/signing-profiles/pulumi_esc_production_20250325212043887700000001/jva5X9nqMa"
     trustedAccount:
       description: This account will be allowed to invoke the lambda
-      default: "arn:aws:iam::616138583583:root"
+      default: "arn:aws:iam::058607598222:root"
 
 variables:
   lambdaArchiveBucket: ${lambdaArchiveBucketPrefix}-${aws:region}
