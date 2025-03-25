@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: esc-db-rotator
+    Description: Deploy an ESC rotation proxy lambda into your VPC and set up a role to allow Pulumi to invoke it.
+    Author: Pulumi
+    SpdxLicenseId: MIT
+    LicenseUrl: LICENSE.txt
+    ReadmeUrl: README.md
+    Labels:
+    - pulumi
+    - esc
+    - secret-rotation
+    HomePageUrl: https://github.com/pulumi/esc-rotator-lambdas/
+    SemanticVersion: 0.0.1
+    SourceCodeUrl: https://github.com/pulumi/esc-rotator-lambdas/
+
+Parameters:
+  TrustedAccountArn:
+    Type: String
+    Description: Pulumi account id that will be allowed to invoke the lambda
+    Default: "arn:aws:iam::616138583583:root"
+  SigningProfileVersionArn:
+    Type: String
+    Description: The signing profile to verify the authenticity of the lambda bundle
+    Default: "arn:aws:signer:us-west-2:616138583583:/signing-profiles/pulumi_esc_dev_20250321013308505700000001/yNMKxEZNc7"
+#  VpcId:
+#    Type: AWS::EC2::VPC::Id
+#    Description: The VPC ID where the Lambda will be deployed
+#  SubnetIds:
+#    Type: List<AWS::EC2::Subnet::Id>
+#    Description: List of subnet IDs where the Lambda will be deployed (private subnets recommended)
+#  RDSSecurityGroupIds:
+#    Type: List<AWS::EC2::SecurityGroup::Id>
+#    Description: Security group IDs of the RDS instances the Lambda needs to access
+#  RDSPort:
+#    Type: Number
+#    Description: The port that RDS is listening on (default is for MySQL)
+#    Default: "3306"
+
+Resources:
+  CodeSigningConfig:
+    Type: AWS::Lambda::CodeSigningConfig
+    Properties:
+      Description: "Validate Pulumi ESC rotator-lambda signature"
+      AllowedPublishers:
+        SigningProfileVersionArns:
+        - !Ref SigningProfileVersionArn
+      CodeSigningPolicies:
+        UntrustedArtifactOnDeployment: Enforce
+
+#  LambdaSecurityGroup:
+#    Type: AWS::EC2::SecurityGroup
+#    Properties:
+#      GroupDescription: "Enable the Pulumi ESC rotation lambda to access RDS"
+#      VpcId: !Ref VpcId
+#      SecurityGroupIngress:
+#        - IpProtocol: "tcp"
+#          FromPort: 3306
+#          ToPort: 3306
+
+  ESCRotationProxyLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeSigningConfigArn: !Ref CodeSigningConfig
+      CodeUri: src/
+      Handler: index.handler
+      Runtime: nodejs22.x
+      Architectures:
+      - x86_64
+#      VpcConfig:
+#        SubnetIds: !Ref SubnetIds
+#        SecurityGroupIds: !Ref LambdaSecurityGroup
+
+  PulumiESCRotatorLambdaInvocationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS: !Ref TrustedAccountArn
+      Policies:
+        - PolicyName: "Allow Pulumi to invoke and update the rotator lambda"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowPulumiToInvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:GetFunction
+                  - lambda:InvokeFunction
+                Resource: !Ref ESCRotationProxyLambda
+              - Sid: AllowPulumiToUpdateLambda
+                Effect: Allow
+                Action: lambda:UpdateFunctionCode
+                Resource: !Ref ESCRotationProxyLambda
+
+
+Outputs:
+  LambdaArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt ESCRotationProxyLambda.Arn
+  AssumedRoleArn:
+    Description: IAM Role created to allow Pulumi to invoke the Lambda
+    Value: !GetAtt PulumiESCRotatorLambdaInvocationRole.Arn
