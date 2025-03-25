@@ -78,7 +78,7 @@ const signedArchives = lambdasToBuild.map(name => {
 
     const signedArchive = signingJob.signedObjects[0].s3s[0];
 
-    return {name: name, signedArchive: signedArchive};
+    return {name: name, signedArchive: signedArchive, githash: githash};
 });
 
 // Set up distribution buckets.
@@ -141,6 +141,9 @@ export const distributions = distributionRegions.flatMap((region) => {
             source: pulumi.interpolate`${archive.signedArchive.bucket}/${archive.signedArchive.key}`,
             bucket: distBucket.bucket,
             key: `${archive.name}/latest.zip`,
+            tags: {
+                GitHash: archive.githash,
+            }
         }, {...opts, retainOnDelete: true})
     })
 
