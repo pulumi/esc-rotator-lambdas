@@ -10,16 +10,16 @@ template:
       description: The AWS region to deploy into
       default: us-west-2
     vpcId:
-      description: The VPC ID where the Lambda will be deployed and can access RDS instances
+      description: The VPC ID where the Lambda will be deployed and can access database instances from
       type: string
     subnetIds:
       description: List of subnet IDs where the Lambda will be deployed (private subnets recommended)
       type: array
-    rdsSecurityGroupIds:
-      description: Security group IDs of the RDS instances the Lambda needs to access
-      type: array
-    rdsPort:
-      description: The port that RDS is listening on (default is for MySQL)
+    databaseSecurityGroupId:
+      description: Security group ID of the database instance the Lambda will access
+      type: string
+    databasePort:
+      description: The port that the database is listening on (default is for MySQL)
       default: 3306
     lambdaArchiveBucketPrefix:
       description: The name prefix of the regional s3 bucket that contains the lambda code archive
@@ -60,7 +60,7 @@ resources:
     type: aws:iam:Role
     properties:
       assumeRolePolicy:
-        'fn::toJSON':
+        fn::toJSON:
           Version: "2012-10-17"
           Statement:
             - Action: sts:AssumeRole
@@ -68,17 +68,35 @@ resources:
               Principal:
                 Service: lambda.amazonaws.com
       managedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
 
   lambdaSecurityGroup:
     type: aws:ec2:SecurityGroup
     properties:
       vpcId: ${vpcId}
       description: Security group for Pulumi ESC rotation lambda
-      ingress:
-        - { protocol: "tcp", fromPort: ${rdsPort}, toPort: ${rdsPort}, securityGroups: ${rdsSecurityGroupIds} },
-      egress:
-        - { protocol: "-1", fromPort: 0, toPort: 0, cidrBlocks: ["0.0.0.0/0"] }
+
+  lambdaEgressRule:
+    type: aws:ec2:SecurityGroupRule
+    properties:
+      description: Allow connections to database
+      type: "egress"
+      protocol: "tcp"
+      fromPort: ${databasePort}
+      toPort: ${databasePort}
+      securityGroupId: ${lambdaSecurityGroup.id}
+      sourceSecurityGroupId: ${databaseSecurityGroupId}
+
+  databaseIngressRule:
+    type: aws:ec2:SecurityGroupRule
+    properties:
+      description: Allow connections from rotation lambda
+      type: "ingress"
+      protocol: "tcp"
+      fromPort: ${databasePort}
+      toPort: ${databasePort}
+      sourceSecurityGroupId: ${lambdaSecurityGroup.id}
+      securityGroupId: ${databaseSecurityGroupId}
 
   lambda:
     type: aws:lambda:Function
