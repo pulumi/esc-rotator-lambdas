@@ -1,0 +1,15 @@
+config:
+  aws:region: us-west-2
+  aws:allowedAccountIds:
+    - "388588623842"
+  aws:defaultTags:
+    tags:
+      Owner: "https://github.com/pulumi/esc-rotator-lambdas"
+  distributionRegions:
+    - "ca-central-1"
+    - "eu-central-1"
+    - "sa-east-1"
+    - "us-east-1"
+    - "us-east-2"
+    - "us-west-1"
+    - "us-west-2"

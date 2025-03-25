@@ -1,0 +1,6 @@
+name: esc-rotator-lambdas
+description: Distribution for ESC rotator lambdas
+runtime:
+  name: nodejs
+  options:
+    packagemanager: yarn

@@ -1,0 +1,11 @@
+environment:
+  - default/dev-sandbox
+config:
+  aws:region: us-west-2
+  aws:allowedAccountIds:
+    - "616138583583"
+  aws:defaultTags:
+    tags:
+      Owner: "https://github.com/pulumi/esc-rotator-lambdas"
+  distributionRegions:
+    - "us-west-2"
