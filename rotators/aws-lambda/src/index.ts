@@ -1,7 +1,9 @@
-import mysqlRotate from "./mysql";
-import postgresRotate from "./postgres";
+import mysqlRotate, { MysqlRotateParams } from "./mysql";
+import postgresRotate, { PostgresRotateParams } from "./postgres";
 
-export const handler = async (event: any, context: any) => {
+type Event = MysqlRotateParams | PostgresRotateParams | any;
+
+export const handler = async (event: Event, context: any) => {
     if (event.type === "mysql") {
         return mysqlRotate(event);
     } else if (event.type === "postgres") {

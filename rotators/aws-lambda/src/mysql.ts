@@ -1,6 +1,7 @@
 import mysql from "mysql2/promise";
 
-interface RotateParams {
+export interface MysqlRotateParams {
+    type: "mysql";
     host: string;
     port: number;
     database: string;
@@ -15,7 +16,7 @@ interface MysqlUser {
     newPassword?: string;
 }
 
-export default async function rotate(event: RotateParams) {
+export default async function rotate(event: MysqlRotateParams) {
     let statusCode = 200;
     let message = "ok";
 

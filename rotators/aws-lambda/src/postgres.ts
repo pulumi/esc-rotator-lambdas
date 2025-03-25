@@ -1,6 +1,7 @@
 import pg from "pg"
 
-interface RotateParams {
+export interface PostgresRotateParams {
+    type: "postgres";
     host: string;
     port: number;
     database: string;
@@ -15,7 +16,7 @@ interface PostgresUser {
     newPassword?: string;
 }
 
-export default async function rotate(event: RotateParams) {
+export default async function rotate(event: PostgresRotateParams) {
     let statusCode = 200;
     let message = "ok";
 
