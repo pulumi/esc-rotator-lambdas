@@ -1,8 +1,8 @@
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 # use a deterministic version of zip so that the lambda archive only changes if the file contents change
 # https://github.com/timo-reymann/deterministic-zip
-COPY --from=timoreymann/deterministic-zip:latest /deterministic-zip /usr/bin/deterministic-zip
+COPY --from=timoreymann/deterministic-zip:3.0.1 /deterministic-zip /usr/bin/deterministic-zip
 
 WORKDIR /workspace
 COPY . /workspace
