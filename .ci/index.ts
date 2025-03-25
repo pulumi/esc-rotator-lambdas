@@ -33,7 +33,7 @@ const signedArchives = lambdasToBuild.map(name => {
     const githash = child_process.execFileSync("git", ["log", "-n1", "--pretty=%H", `../rotators/${name}`], {encoding: "utf8"}).trim()
 
     // Use a docker container to build the lambda archive for toolchain consistency.
-    const builder = new dockerbuild.Image(`${name}-lambda-builder`, {
+    const builder = new dockerbuild.Image(`${name}-builder`, {
         context: {
             location: `../rotators/${name}`,
         },
@@ -52,13 +52,13 @@ const signedArchives = lambdasToBuild.map(name => {
         return new pulumi.asset.FileAsset(path.join(exports![0].local!.dest, args!["OUTFILE_FILENAME"]))
     })
 
-    const object = new aws.s3.BucketObjectv2(`${name}-lambda-staged.zip`, {
+    const object = new aws.s3.BucketObjectv2(`${name}-staged.zip`, {
         bucket: stagingBucket.bucket,
         key: pulumi.interpolate`staged/${name}/${githash}.zip`,
         source: archive,
     }, {retainOnDelete: true})
 
-    const signingJob = new aws.signer.SigningJob(`${name}-lambda-signed.zip`, {
+    const signingJob = new aws.signer.SigningJob(`${name}-signed.zip`, {
         profileName: signingProfile.name,
         source: {
             s3: {
@@ -137,7 +137,7 @@ export const distributions = distributionRegions.flatMap((region) => {
 
     // Replicate the signed archives to this region
     const replicas = signedArchives.map(archive => {
-        return new aws.s3.ObjectCopy(`${region}-${archive.name}-lambda-latest.zip`, {
+        return new aws.s3.ObjectCopy(`${region}-${archive.name}-latest.zip`, {
             source: pulumi.interpolate`${archive.signedArchive.bucket}/${archive.signedArchive.key}`,
             bucket: distBucket.bucket,
             key: `${archive.name}/latest.zip`,
