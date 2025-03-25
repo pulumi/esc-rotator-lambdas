@@ -116,7 +116,11 @@ export const distributions = distributionRegions.flatMap((region) => {
                     Sid: "PublicReadGetObject",
                     Effect: "Allow",
                     Principal: "*",
-                    Action: "s3:GetObject",
+                    Action: [
+                        "s3:GetObject",
+                        "s3:GetObjectTagging",
+                        "s3:GetObjectVersion",
+                    ],
                     Resource: pulumi.interpolate`${distBucket.arn}/*`,
                 },
                 {
