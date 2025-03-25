@@ -9,6 +9,12 @@
   },
   "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610",
   "devDependencies": {
+    "@types/node": "^22.13.13",
+    "@types/pg": "^8.11.11",
     "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "mysql2": "^3.14.0",
+    "pg": "^8.14.1"
   }
 }

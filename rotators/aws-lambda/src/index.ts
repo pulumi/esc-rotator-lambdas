@@ -1,14 +1,17 @@
-export async function handler(event: any){
-    console.log('Event:', event);
+import mysqlRotate, { MysqlRotateParams } from "./mysql";
+import postgresRotate, { PostgresRotateParams } from "./postgres";
 
-    const name = event.name || 'Guest';
+type Event = MysqlRotateParams | PostgresRotateParams | any;
 
-    const message = `Hello, ${name}!`;
+export const handler = async (event: Event, context: any) => {
+    if (event.type === "mysql") {
+        return mysqlRotate(event);
+    } else if (event.type === "postgres") {
+        return postgresRotate(event);
+    }
 
     return {
-        statusCode: 200,
-        body: JSON.stringify({
-            message: message,
-        }),
+        code: 400,
+        message: `Unknown event type: "${event.type}"`,
     };
-}
+};
