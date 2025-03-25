@@ -19,7 +19,7 @@ export const signingProfileVersionArn = signingProfile.versionArn;
 
 const stagingBucket = new aws.s3.BucketV2(`esc-rotator-lambdas-${pulumi.getStack()}`, {
     forceDestroy: true,
-}, {protect: false})
+})
 
 const stagingBucketVersioning = new aws.s3.BucketVersioningV2("staging-bucket-versioning", {
     bucket: stagingBucket.bucket,
@@ -137,7 +137,7 @@ export const distributions = distributionRegions.flatMap((region) => {
 
     // Replicate the signed archives to this region
     const replicas = signedArchives.map(archive => {
-        return new aws.s3.ObjectCopy(`${archive.name}-lambda-latest.zip`, {
+        return new aws.s3.ObjectCopy(`${region}-${archive.name}-lambda-latest.zip`, {
             source: pulumi.interpolate`${archive.signedArchive.bucket}/${archive.signedArchive.key}`,
             bucket: distBucket.bucket,
             key: `${archive.name}/latest.zip`,
