@@ -21,7 +21,13 @@ template:
     rdsPort:
       description: The port that RDS is listening on (default is for MySQL)
       default: 3306
-    signingProfileVersionArn:
+    lambdaArchiveBucketPrefix:
+      description: The name prefix of the regional s3 bucket that contains the lambda code archive
+      default: "public-esc-rotator-lambdas-production"
+    lambdaArchiveKey:
+      description: The key of the lambda archive to deploy
+      default: "aws-lambda/latest.zip"
+    lambdaArchiveSigningProfileVersionArn:
       description: This signing profile is used to verify the authenticity of the lambda bundle
       default: "arn:aws:signer:us-west-2:616138583583:/signing-profiles/pulumi_esc_dev_20250321013308505700000001/yNMKxEZNc7"
     trustedAccount:
@@ -29,12 +35,13 @@ template:
       default: "arn:aws:iam::616138583583:root"
 
 variables:
+  lambdaArchiveBucket: ${lambdaArchiveBucketPrefix}-${aws:region}
   codeArtifact:
     fn::invoke:
       function: aws:s3:getObject
       arguments:
-        bucket: "public-esc-rotator-lambdas-dev-${aws:region}"
-        key: "latest.zip"
+        bucket: ${lambdaArchiveBucket}
+        key: ${lambdaArchiveKey}
 
 resources:
   codeSigningConfig:
@@ -45,7 +52,7 @@ resources:
         https://github.com/pulumi/esc-rotator-lambdas
       allowedPublishers:
         signingProfileVersionArns:
-          - ${signingProfileVersionArn}
+          - ${lambdaArchiveSigningProfileVersionArn}
       policies:
         untrustedArtifactOnDeployment: Enforce
 
@@ -121,7 +128,7 @@ resources:
                 - Sid: AllowPulumiToFetchUpdatedLambdaArchives
                   Effect: Allow
                   Action: s3:GetObject
-                  Resource: arn:aws:s3:::public-pulumi-esc-rotator-lambdas-*/*
+                  Resource: arn:aws:s3:::${lambdaArchiveBucket}/*
 
 outputs:
   lambdaArn: ${lambda.arn}
