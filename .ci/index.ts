@@ -147,7 +147,9 @@ export const distributions = distributionRegions.flatMap((region) => {
             key: `${archive.name}/latest.zip`,
             tags: {
                 GitHash: archive.githash,
-            }
+            },
+            // Opt into computing SHA256 checksum so that an archive checksum can be compared directly against a lambda's CodeSha256 to determine if they match
+            checksumAlgorithm: "SHA256",
         }, {...opts, retainOnDelete: true})
     })
 
