@@ -90,7 +90,10 @@ Allow Pulumi ESC to securely invoke the Lambda
 
 1. In IAM, create a new role:
     - Name: `PulumiESCRotatorLambdaInvocationRole`
-    - Trust relationship: Allow Pulumi's ESC account id (`058607598222`) to assume this role
+    - Trust relationship: Allow Pulumi's ESC account id (`058607598222`) to assume this role.
+    - Add a ExternalId condition on the role containing the environment slug that will be allowed to use the rotator.
+      Pulumi will use an [external id](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html
+      containing the originating ESC environment name when assuming this role: `{pulumi organization}/{esc project}/{esc env name}`.
 
    ```json
    {
@@ -101,6 +104,11 @@ Allow Pulumi ESC to securely invoke the Lambda
          "Effect": "Allow",
          "Principal": {
            "AWS": "arn:aws:iam::058607598222:root"
+         },
+         "Condition": {
+           "StringEquals": {
+             "sts:ExternalId": "{fully qualified ESC environment allowed to use the rotator}"
+            }
          }
        }
      ]

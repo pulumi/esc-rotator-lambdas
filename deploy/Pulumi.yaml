@@ -33,6 +33,13 @@ template:
     trustedAccount:
       description: This account will be allowed to invoke the lambda
       default: "arn:aws:iam::058607598222:root"
+    externalId:
+      description: >-
+        The ESC environment that is allowed to use the rotation lambda.
+        Pulumi will set set an external id with the Pulumi organization and fully qualified ESC environment name when assuming
+        the role to invoke the lambda: `{pulumi organization}/{esc project}/{esc env name}`.
+        See https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html
+      type: string
 
 variables:
   lambdaArchiveBucket: ${lambdaArchiveBucketPrefix}-${aws:region}
@@ -128,6 +135,9 @@ resources:
               Effect: Allow
               Principal:
                 AWS: ${trustedAccount}
+              Condition:
+                StringEquals:
+                  sts:ExternalId: ${externalId}
       inlinePolicies:
         - policy:
             fn::toJSON:
