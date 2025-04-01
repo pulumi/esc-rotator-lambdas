@@ -12,7 +12,7 @@ RUN go mod download
 # binary must be named `bootstrap`
 # https://docs.aws.amazon.com/lambda/latest/dg/golang-handler.html#golang-handler-naming
 COPY . /workspace/
-RUN go build -o bootstrap .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o bootstrap main.go
 RUN deterministic-zip -r lambda-deployment-package.zip bootstrap
 
 FROM scratch

@@ -115,8 +115,8 @@ resources:
       s3Key: ${codeArtifact.key}
       s3ObjectVersion: ${codeArtifact.versionId}
       codeSigningConfigArn: ${codeSigningConfig.arn}
-      runtime: nodejs22.x
-      handler: index.handler
+      runtime: provided.al2023
+      handler: bootstrap
       role: ${lambdaExecRole.arn}
       vpcConfig:
         subnetIds: ${subnetIds}
