@@ -3,8 +3,9 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
+	"fmt"
+
+	"github.com/lib/pq"
 )
 
 type PostgresRotateParams struct {
@@ -22,23 +23,29 @@ type PostgresUser struct {
 	NewPassword *string `json:"newPassword"`
 }
 
-func Rotate(ctx context.Context, event PostgresRotateParams) error {
-	db, err := sql.Open("pgx", (&pgx.ConnConfig{
-		Config: pgconn.Config{
-			Host:     event.Host,
-			Port:     uint16(event.Port),
-			Database: event.Database,
-			User:     event.ManagingUser.Username,
-			Password: event.ManagingUser.Password,
-		},
-	}).ConnString())
+func Rotate(ctx context.Context, request PostgresRotateParams) error {
+	db, err := sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
+		request.ManagingUser.Username,
+		request.ManagingUser.Password,
+		request.Host,
+		request.Port,
+		request.Database,
+	))
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	if _, err := db.ExecContext(ctx, `ALTER USER ? WITH PASSWORD ?`, event.RotateUser.Username, event.RotateUser.NewPassword); err != nil {
-		return err
+	if request.RotateUser.NewPassword == nil {
+		return fmt.Errorf("no password provided")
+	}
+
+	_, err = db.ExecContext(ctx, fmt.Sprintf(`ALTER USER %s WITH PASSWORD %s`,
+		pq.QuoteIdentifier(request.RotateUser.Username),
+		pq.QuoteLiteral(*request.RotateUser.NewPassword)),
+	)
+	if err != nil {
+		return fmt.Errorf("error rotating user %q: %w", request.RotateUser.Username, err)
 	}
 	return nil
 }

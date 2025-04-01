@@ -3,6 +3,8 @@ package mysql
 import (
 	"context"
 	"fmt"
+	"net"
+
 	"github.com/go-sql-driver/mysql"
 )
 import "database/sql"
@@ -24,19 +26,25 @@ type MysqlUser struct {
 
 func Rotate(ctx context.Context, request MysqlRotateParams) error {
 	db, err := sql.Open("mysql", (&mysql.Config{
-		Addr:   fmt.Sprintf("%s:%d", request.Host, request.Port),
-		DBName: request.Database,
-		User:   request.ManagingUser.Username,
-		Passwd: request.ManagingUser.Password,
+		Net:               "tcp",
+		Addr:              net.JoinHostPort(request.Host, fmt.Sprintf("%d", request.Port)),
+		DBName:            request.Database,
+		User:              request.ManagingUser.Username,
+		Passwd:            request.ManagingUser.Password,
+		InterpolateParams: true,
 	}).FormatDSN())
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
+	if request.RotateUser.NewPassword == nil {
+		return fmt.Errorf("no password provided")
+	}
+
 	_, err = db.ExecContext(ctx, `ALTER USER ? IDENTIFIED BY ?`, request.RotateUser.Username, request.RotateUser.NewPassword)
 	if err != nil {
-		return err
+		return fmt.Errorf("error rotating user %q: %w", request.RotateUser.Username, err)
 	}
 	return nil
 }
