@@ -1,4 +1,6 @@
 *
-!package.json
-!tsconfig.json
-!src
+!go.mod
+!go.sum
+!main.go
+!mysql
+!postgres
