@@ -28,6 +28,7 @@ This Pulumi program deploys the following AWS resources:
 | `subnetIds`                             | Subnets where Lambda will be deployed (private subnets recommended) |
 | `databaseSecurityGroupId`               | Security group ID of the database requiring access                  |
 | `databasePort`                          | Database port (default: 3306 for MySQL)                             |
+| `externalId`                            | Slug of the environment that is permitted to invoke the rotator     |
 | `lambdaArchiveBucketPrefix`             | Regional S3 bucket prefix containing the Lambda code                |
 | `lambdaArchiveKey`                      | S3 key for the Lambda code archive                                  |
 | `lambdaArchiveSigningProfileVersionArn` | ARN of signing profile for code verification                        |
@@ -61,7 +62,7 @@ Deploy the code that will handle credential rotation requests within your VPC.
 
 1. Navigate to the Lambda console and create a new function
 2. Basic settings:
-    - Runtime: Node.js 22.x
+    - Runtime: Amazon Linux 2023
     - Execution role: Create a new role with basic Lambda execution permissions
 
 3. Advanced settings:
@@ -80,7 +81,7 @@ Deploy the code that will handle credential rotation requests within your VPC.
     - Use the S3 Bucket for your region: `public-esc-rotator-lambdas-production-{region}`: 
       - For example: `https://public-esc-rotator-lambdas-production-us-west-2.s3.us-west-2.amazonaws.com/aws-lambda/latest.zip`
     - S3 Key: `aws-lambda/latest.zip`
-    - Handler: `index.handler`
+    - Handler: `bootstrap`
 
 Take note of the lambda's arn.
 
@@ -92,7 +93,7 @@ Allow Pulumi ESC to securely invoke the Lambda
     - Name: `PulumiESCRotatorLambdaInvocationRole`
     - Trust relationship: Allow Pulumi's AWS account id (`058607598222`) to assume this role.
     - Add a ExternalId condition on the role containing the environment slug that will be allowed to use the rotator.
-      Pulumi will use an [external id](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html
+      Pulumi will use an [external id](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html)
       containing the originating ESC environment name when assuming this role: `{pulumi organization}/{esc project}/{esc env name}`.
       If you choose, use `StringLike` in the condition to use a wildcard for matching multiple environments.
 
