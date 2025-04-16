@@ -36,10 +36,11 @@ func Rotate(ctx context.Context, request MysqlRotateParams) error {
 	cfg.Passwd = request.ManagingUser.Password
 	cfg.InterpolateParams = true
 
-	db, err := sql.Open("mysql", cfg.FormatDSN())
+	connector, err := mysql.NewConnector(cfg)
 	if err != nil {
 		return err
 	}
+	db := sql.OpenDB(connector)
 	defer db.Close()
 
 	if err = db.PingContext(ctx); err != nil {
