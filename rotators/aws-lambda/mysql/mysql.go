@@ -2,12 +2,11 @@ package mysql
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"net"
 
 	"github.com/go-sql-driver/mysql"
 )
-import "database/sql"
 
 type MysqlRotateParams struct {
 	Host     string `json:"host"`
@@ -29,14 +28,15 @@ func Rotate(ctx context.Context, request MysqlRotateParams) error {
 		return fmt.Errorf("no password provided")
 	}
 
-	db, err := sql.Open("mysql", (&mysql.Config{
-		Net:               "tcp",
-		Addr:              net.JoinHostPort(request.Host, fmt.Sprintf("%d", request.Port)),
-		DBName:            request.Database,
-		User:              request.ManagingUser.Username,
-		Passwd:            request.ManagingUser.Password,
-		InterpolateParams: true,
-	}).FormatDSN())
+	cfg := mysql.NewConfig()
+	cfg.Net = "tcp"
+	cfg.Addr = fmt.Sprintf("%s:%d", request.Host, request.Port)
+	cfg.DBName = request.Database
+	cfg.User = request.ManagingUser.Username
+	cfg.Passwd = request.ManagingUser.Password
+	cfg.InterpolateParams = true
+
+	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		return err
 	}
