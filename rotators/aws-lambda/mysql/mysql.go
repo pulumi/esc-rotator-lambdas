@@ -25,6 +25,10 @@ type MysqlUser struct {
 }
 
 func Rotate(ctx context.Context, request MysqlRotateParams) error {
+	if request.RotateUser.NewPassword == nil {
+		return fmt.Errorf("no password provided")
+	}
+
 	db, err := sql.Open("mysql", (&mysql.Config{
 		Net:               "tcp",
 		Addr:              net.JoinHostPort(request.Host, fmt.Sprintf("%d", request.Port)),
@@ -37,10 +41,6 @@ func Rotate(ctx context.Context, request MysqlRotateParams) error {
 		return err
 	}
 	defer db.Close()
-
-	if request.RotateUser.NewPassword == nil {
-		return fmt.Errorf("no password provided")
-	}
 
 	_, err = db.ExecContext(ctx, `ALTER USER ? IDENTIFIED BY ?`, request.RotateUser.Username, request.RotateUser.NewPassword)
 	if err != nil {
