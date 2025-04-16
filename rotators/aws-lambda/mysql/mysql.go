@@ -2,12 +2,11 @@ package mysql
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"net"
 
 	"github.com/go-sql-driver/mysql"
 )
-import "database/sql"
 
 type MysqlRotateParams struct {
 	Host     string `json:"host"`
@@ -25,21 +24,27 @@ type MysqlUser struct {
 }
 
 func Rotate(ctx context.Context, request MysqlRotateParams) error {
-	db, err := sql.Open("mysql", (&mysql.Config{
-		Net:               "tcp",
-		Addr:              net.JoinHostPort(request.Host, fmt.Sprintf("%d", request.Port)),
-		DBName:            request.Database,
-		User:              request.ManagingUser.Username,
-		Passwd:            request.ManagingUser.Password,
-		InterpolateParams: true,
-	}).FormatDSN())
+	if request.RotateUser.NewPassword == nil {
+		return fmt.Errorf("no password provided")
+	}
+
+	cfg := mysql.NewConfig()
+	cfg.Net = "tcp"
+	cfg.Addr = fmt.Sprintf("%s:%d", request.Host, request.Port)
+	cfg.DBName = request.Database
+	cfg.User = request.ManagingUser.Username
+	cfg.Passwd = request.ManagingUser.Password
+	cfg.InterpolateParams = true
+
+	connector, err := mysql.NewConnector(cfg)
 	if err != nil {
 		return err
 	}
+	db := sql.OpenDB(connector)
 	defer db.Close()
 
-	if request.RotateUser.NewPassword == nil {
-		return fmt.Errorf("no password provided")
+	if err = db.PingContext(ctx); err != nil {
+		return fmt.Errorf("connecting to database: %w", err)
 	}
 
 	_, err = db.ExecContext(ctx, `ALTER USER ? IDENTIFIED BY ?`, request.RotateUser.Username, request.RotateUser.NewPassword)
