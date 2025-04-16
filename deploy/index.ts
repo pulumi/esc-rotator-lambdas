@@ -5,19 +5,41 @@ import * as aws from "@pulumi/aws";
 const templateConfig = new pulumi.Config("esc-rotator-lambda");
 const awsConfig = new pulumi.Config("aws");
 const awsRegion = awsConfig.require("region");
-const vpcId = templateConfig.require("vpcId");
-const subnetIds = templateConfig.requireObject<string[]>("subnetIds");
-const databaseSecurityGroupId = templateConfig.require("databaseSecurityGroupId");
-const databasePort = templateConfig.requireNumber("databasePort");
+const rdsId = templateConfig.require("rdsId");
 const lambdaArchiveBucketPrefix = templateConfig.require("lambdaArchiveBucketPrefix");
 const lambdaArchiveKey = templateConfig.require("lambdaArchiveKey");
 const lambdaArchiveSigningProfileVersionArn = templateConfig.require("lambdaArchiveSigningProfileVersionArn");
 const trustedAccount = templateConfig.require("trustedAccount");
 const externalId = templateConfig.require("externalId");
 
-// Retrieve code artifact from trusted pulumi bucket 
+// Retrieve reference to current code artifact from trusted pulumi bucket
 const lambdaArchiveBucket = `${lambdaArchiveBucketPrefix}-${awsRegion}`
 const codeArtifact = aws.s3.getObjectOutput({bucket: lambdaArchiveBucket, key: lambdaArchiveKey});
+
+// Introspect RDS to discover network settings
+const database = aws.rds.getClusterOutput({
+    clusterIdentifier: rdsId,
+});
+
+const subnetGroup = aws.rds.getSubnetGroupOutput({
+    name: database.dbSubnetGroupName,
+});
+
+const vpcId = subnetGroup.vpcId;
+let validatedSubnetIds = subnetGroup.subnetIds.apply(async ids => {
+    let subnetIds: string[] = [];
+    for (const id of ids) {
+        await aws.ec2.getSubnet({id: id}, {async: false}).then(
+            _ => subnetIds.push(id),
+            _ => console.log("bad subnet found: "+id),
+        );
+    }
+    return subnetIds;
+});
+
+// going to assume the first security group is the one we need to add an incoming rule to.
+const databaseSecurityGroupId = database.vpcSecurityGroupIds[0];
+const databasePort = database.port;
 
 // Create resources
 const namePrefix = "PulumiEscSecretRotatorLambda-"
@@ -75,7 +97,7 @@ const lambda = new aws.lambda.Function(namePrefix + "Function", {
     handler: "bootstrap",
     role: lambdaExecRole.arn,
     vpcConfig: {
-        subnetIds: subnetIds,
+        subnetIds: validatedSubnetIds,
         securityGroupIds: [lambdaSecurityGroup.id],
     },
 });
