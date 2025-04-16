@@ -1,9 +1,6 @@
 name: esc-rotator-lambda
-description: >-
-  This pulumi program will deploy the rotation lambda into your VPC and
-  will set up a role to allow ESC to invoke it.
-runtime: yaml
-
+runtime: nodejs
+description: This pulumi program will deploy the rotation lambda into your VPC and will set up a role to allow ESC to invoke it.
 template:
   config:
     aws:region:
@@ -11,28 +8,25 @@ template:
       default: us-west-2
     vpcId:
       description: The VPC ID where the Lambda will be deployed and can access database instances from
-      type: string
     subnetIds:
       description: List of subnet IDs where the Lambda will be deployed (private subnets recommended)
-      type: array
     databaseSecurityGroupId:
       description: Security group ID of the database instance the Lambda will access
-      type: string
     databasePort:
       description: The port that the database is listening on (default is for MySQL)
-      default: 3306
+      default: "3306"
     lambdaArchiveBucketPrefix:
       description: The name prefix of the regional s3 bucket that contains the lambda code archive
-      default: "public-esc-rotator-lambdas-production"
+      default: public-esc-rotator-lambdas-production
     lambdaArchiveKey:
       description: The key of the lambda archive to deploy
-      default: "aws-lambda/latest.zip"
+      default: aws-lambda/latest.zip
     lambdaArchiveSigningProfileVersionArn:
       description: This signing profile is used to verify the authenticity of the lambda bundle
-      default: "arn:aws:signer:us-west-2:388588623842:/signing-profiles/pulumi_esc_production_20250325212043887700000001/jva5X9nqMa"
+      default: arn:aws:signer:us-west-2:388588623842:/signing-profiles/pulumi_esc_production_20250325212043887700000001/jva5X9nqMa
     trustedAccount:
       description: This account will be allowed to invoke the lambda
-      default: "arn:aws:iam::058607598222:root"
+      default: arn:aws:iam::058607598222:root
     externalId:
       description: >-
         The ESC environment that is allowed to use the rotation lambda.
@@ -40,125 +34,3 @@ template:
         the role to invoke the lambda like `{pulumi organization}/{esc project}/{esc env name}`.
         You can use `*` wildcards if you'd like to match more than one environment.
         See https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html
-      type: string
-
-variables:
-  lambdaArchiveBucket: ${lambdaArchiveBucketPrefix}-${aws:region}
-  codeArtifact:
-    fn::invoke:
-      function: aws:s3:getObject
-      arguments:
-        bucket: ${lambdaArchiveBucket}
-        key: ${lambdaArchiveKey}
-
-resources:
-  codeSigningConfig:
-    type: aws:lambda:CodeSigningConfig
-    properties:
-      description: >-
-        Pulumi ESC rotator-lambda signature -
-        https://github.com/pulumi/esc-rotator-lambdas
-      allowedPublishers:
-        signingProfileVersionArns:
-          - ${lambdaArchiveSigningProfileVersionArn}
-      policies:
-        untrustedArtifactOnDeployment: Enforce
-
-  lambdaExecRole:
-    type: aws:iam:Role
-    properties:
-      assumeRolePolicy:
-        fn::toJSON:
-          Version: "2012-10-17"
-          Statement:
-            - Action: sts:AssumeRole
-              Effect: Allow
-              Principal:
-                Service: lambda.amazonaws.com
-      managedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-
-  lambdaSecurityGroup:
-    type: aws:ec2:SecurityGroup
-    properties:
-      vpcId: ${vpcId}
-      description: Security group for Pulumi ESC rotation lambda
-
-  lambdaEgressRule:
-    type: aws:ec2:SecurityGroupRule
-    properties:
-      description: Allow connections to database
-      type: "egress"
-      protocol: "tcp"
-      fromPort: ${databasePort}
-      toPort: ${databasePort}
-      securityGroupId: ${lambdaSecurityGroup.id}
-      sourceSecurityGroupId: ${databaseSecurityGroupId}
-
-  databaseIngressRule:
-    type: aws:ec2:SecurityGroupRule
-    properties:
-      description: Allow connections from rotation lambda
-      type: "ingress"
-      protocol: "tcp"
-      fromPort: ${databasePort}
-      toPort: ${databasePort}
-      sourceSecurityGroupId: ${lambdaSecurityGroup.id}
-      securityGroupId: ${databaseSecurityGroupId}
-
-  lambda:
-    type: aws:lambda:Function
-    properties:
-      description: >-
-        The rotator lambda proxies a secret rotation request from Pulumi ESC to a service within your VPC.
-      s3Bucket: ${codeArtifact.bucket}
-      s3Key: ${codeArtifact.key}
-      s3ObjectVersion: ${codeArtifact.versionId}
-      codeSigningConfigArn: ${codeSigningConfig.arn}
-      runtime: provided.al2023
-      handler: bootstrap
-      role: ${lambdaExecRole.arn}
-      vpcConfig:
-        subnetIds: ${subnetIds}
-        securityGroupIds:
-         - ${lambdaSecurityGroup.id}
-
-  assumedRole:
-    type: aws:iam:Role
-    properties:
-      name: PulumiESCRotatorLambdaInvocationRole
-      description: Allow Pulumi ESC to invoke/manage the rotator lambda
-      assumeRolePolicy:
-        fn::toJSON:
-          Version: "2012-10-17"
-          Statement:
-            - Action: sts:AssumeRole
-              Effect: Allow
-              Principal:
-                AWS: ${trustedAccount}
-              Condition:
-                StringLike:
-                  sts:ExternalId: ${externalId}
-      inlinePolicies:
-        - policy:
-            fn::toJSON:
-              Version: "2012-10-17"
-              Statement:
-                - Sid: AllowPulumiToInvokeLambda
-                  Effect: Allow
-                  Action:
-                    - lambda:GetFunction
-                    - lambda:InvokeFunction
-                  Resource: ${lambda.arn}
-                - Sid: AllowPulumiToUpdateLambda
-                  Effect: Allow
-                  Action: lambda:UpdateFunctionCode
-                  Resource: ${lambda.arn}
-                - Sid: AllowPulumiToFetchUpdatedLambdaArchives
-                  Effect: Allow
-                  Action: s3:GetObject
-                  Resource: arn:aws:s3:::${lambdaArchiveBucket}/*
-
-outputs:
-  lambdaArn: ${lambda.arn}
-  assumedRoleArn: ${assumedRole.arn}
