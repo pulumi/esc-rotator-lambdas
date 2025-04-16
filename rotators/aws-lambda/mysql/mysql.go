@@ -42,6 +42,10 @@ func Rotate(ctx context.Context, request MysqlRotateParams) error {
 	}
 	defer db.Close()
 
+	if err = db.PingContext(ctx); err != nil {
+		return fmt.Errorf("connecting to database: %w", err)
+	}
+
 	_, err = db.ExecContext(ctx, `ALTER USER ? IDENTIFIED BY ?`, request.RotateUser.Username, request.RotateUser.NewPassword)
 	if err != nil {
 		return fmt.Errorf("error rotating user %q: %w", request.RotateUser.Username, err)
