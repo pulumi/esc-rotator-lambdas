@@ -20,6 +20,5 @@ GRANT SELECT, INSERT, UPDATE
 
 -- Create Managing User (with privileges to alter the target user)
 CREATE USER IF NOT EXISTS 'managing_user'@'%' IDENTIFIED BY 'manager_password';
-GRANT ALL PRIVILEGES ON credential_rotation_test.* TO 'managing_user'@'%';
+GRANT ALTER ON credential_rotation_test.* TO 'managing_user'@'%';
 GRANT CREATE USER ON *.* TO 'managing_user'@'%';
-GRANT ALTER ON *.* TO 'managing_user'@'%';
