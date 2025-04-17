@@ -20,7 +20,8 @@ const lambdaArchiveBucket = `${lambdaArchiveBucketPrefix}-${awsRegion}`
 const codeArtifact = aws.s3.getObjectOutput({bucket: lambdaArchiveBucket, key: lambdaArchiveKey});
 
 // Create resources
-const codeSigningConfig = new aws.lambda.CodeSigningConfig("codeSigningConfig", {
+const namePrefix = "PulumiEscSecretRotatorLambda-"
+const codeSigningConfig = new aws.lambda.CodeSigningConfig(namePrefix + "CodeSigningConfig", {
     description: "Pulumi ESC rotator-lambda signature - https://github.com/pulumi/esc-rotator-lambdas",
     allowedPublishers: {
         signingProfileVersionArns: [lambdaArchiveSigningProfileVersionArn],
@@ -29,7 +30,7 @@ const codeSigningConfig = new aws.lambda.CodeSigningConfig("codeSigningConfig", 
         untrustedArtifactOnDeployment: "Enforce",
     },
 });
-const lambdaExecRole = new aws.iam.Role("lambdaExecRole", {
+const lambdaExecRole = new aws.iam.Role(namePrefix + "ExecutionRole", {
     assumeRolePolicy: JSON.stringify({
         Version: "2012-10-17",
         Statement: [{
@@ -42,11 +43,11 @@ const lambdaExecRole = new aws.iam.Role("lambdaExecRole", {
     }),
     managedPolicyArns: ["arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"],
 });
-const lambdaSecurityGroup = new aws.ec2.SecurityGroup("lambdaSecurityGroup", {
+const lambdaSecurityGroup = new aws.ec2.SecurityGroup(namePrefix + "SecurityGroup", {
     vpcId: vpcId,
     description: "Security group for Pulumi ESC rotation lambda",
 });
-const lambdaEgressRule = new aws.ec2.SecurityGroupRule("lambdaEgressRule", {
+const lambdaEgressRule = new aws.ec2.SecurityGroupRule(namePrefix + "ToDatabaseEgressRule", {
     description: "Allow connections to database",
     type: "egress",
     protocol: "tcp",
@@ -55,7 +56,7 @@ const lambdaEgressRule = new aws.ec2.SecurityGroupRule("lambdaEgressRule", {
     securityGroupId: lambdaSecurityGroup.id,
     sourceSecurityGroupId: databaseSecurityGroupId,
 });
-const databaseIngressRule = new aws.ec2.SecurityGroupRule("databaseIngressRule", {
+const databaseIngressRule = new aws.ec2.SecurityGroupRule(namePrefix + "FromDatabaseIngressRule", {
     description: "Allow connections from rotation lambda",
     type: "ingress",
     protocol: "tcp",
@@ -64,7 +65,7 @@ const databaseIngressRule = new aws.ec2.SecurityGroupRule("databaseIngressRule",
     sourceSecurityGroupId: lambdaSecurityGroup.id,
     securityGroupId: databaseSecurityGroupId,
 });
-const lambda = new aws.lambda.Function("lambda", {
+const lambda = new aws.lambda.Function(namePrefix + "Function", {
     description: "The rotator lambda proxies a secret rotation request from Pulumi ESC to a service within your VPC.",
     s3Bucket: codeArtifact.bucket,
     s3Key: codeArtifact.key,
@@ -78,8 +79,7 @@ const lambda = new aws.lambda.Function("lambda", {
         securityGroupIds: [lambdaSecurityGroup.id],
     },
 });
-const assumedRole = new aws.iam.Role("assumedRole", {
-    name: "PulumiESCRotatorLambdaInvocationRole",
+const assumedRole = new aws.iam.Role(namePrefix + "InvocationRole", {
     description: "Allow Pulumi ESC to invoke/manage the rotator lambda",
     assumeRolePolicy: JSON.stringify({
         Version: "2012-10-17",
