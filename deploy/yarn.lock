@@ -411,6 +411,20 @@
     tmp "^0.2.1"
     upath "^1.1.0"
 
+"@pulumi/pulumiservice@^0.29.1":
+  version "0.29.1"
+  resolved "https://registry.yarnpkg.com/@pulumi/pulumiservice/-/pulumiservice-0.29.1.tgz#ade8ddaf63ae829bf8ffa2c27635b9ea7402904b"
+  integrity sha512-6AF7mn8sTyxbJiVStQ1BRoH8Xq5eMjoPrMT2IbcZx4BhMJ1Ng38LN1vbLB6eYVqcZbQyZWVOCayC9qsGN4Q+pA==
+  dependencies:
+    "@pulumi/pulumi" "^3.0.0"
+
+"@pulumi/random@^4.18.0":
+  version "4.18.0"
+  resolved "https://registry.yarnpkg.com/@pulumi/random/-/random-4.18.0.tgz#d04d3a5530ad12fc080a52f286f40fcc9ca1a987"
+  integrity sha512-6joE5/jhadtWmwuMh3YtDB1kA3G4pDLVhk+l5mSxe/kuf+ejQ1w+LnfbpRi9iinwPl2AqzfDp9IheksTxIwzFA==
+  dependencies:
+    "@pulumi/pulumi" "^3.142.0"
+
 "@sigstore/bundle@^2.3.2":
   version "2.3.2"
   resolved "https://registry.yarnpkg.com/@sigstore/bundle/-/bundle-2.3.2.tgz#ad4dbb95d665405fd4a7a02c8a073dbd01e4e95e"

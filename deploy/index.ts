@@ -1,4 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
+import * as pulumiservice from "@pulumi/pulumiservice";
 import * as aws from "@pulumi/aws";
 
 // Load configs
@@ -10,7 +12,7 @@ const lambdaArchiveBucketPrefix = templateConfig.require("lambdaArchiveBucketPre
 const lambdaArchiveKey = templateConfig.require("lambdaArchiveKey");
 const lambdaArchiveSigningProfileVersionArn = templateConfig.require("lambdaArchiveSigningProfileVersionArn");
 const trustedAccount = templateConfig.require("trustedAccount");
-const externalId = templateConfig.require("externalId");
+const allowlistedEnvironment = templateConfig.get("allowlistedEnvironment") ?? null;
 
 // Retrieve reference to current code artifact from trusted pulumi bucket
 const lambdaArchiveBucket = `${lambdaArchiveBucketPrefix}-${awsRegion}`
@@ -36,6 +38,24 @@ let validatedSubnetIds = subnetGroup.subnetIds.apply(async ids => {
     }
     return subnetIds;
 });
+
+// Decide whether to create example environment
+let externalId: string
+let exampleEnvironment : {
+    organization: string,
+    project: string,
+    name: string,
+} | null = null;
+if (allowlistedEnvironment) {
+    externalId = allowlistedEnvironment;
+} else {
+    exampleEnvironment = {
+        organization: pulumi.getOrganization(),
+        project: "PulumiEscSecretRotatorLambda",
+        name: "ExampleRotator",
+    };
+    externalId = `${exampleEnvironment.organization}/${exampleEnvironment.project}/${exampleEnvironment.name}-*`;
+}
 
 // Create resources
 const namePrefix = "PulumiEscSecretRotatorLambda-"
@@ -143,5 +163,41 @@ const assumedRole = new aws.iam.Role(namePrefix + "InvocationRole", {
         }),
     }],
 });
+if (exampleEnvironment) {
+    const randomString = new random.RandomString(namePrefix + "RandomEnvironmentId", {
+        keepers: {
+            allowlistedEnvironment: assumedRole.name,
+        },
+        length: 8,
+        special: false,
+    });
+    const rotatorType = databasePort.apply(port => port === 5432 ? "postgres" : "mysql");
+    const yaml = pulumi.interpolate
+        `values:
+           exampleRotator:
+             fn::rotate::${rotatorType}:
+               inputs:
+                 database:
+                   connector:
+                     awsLambda:
+                       roleArn: ${assumedRole.arn}
+                       lambdaArn: ${lambda.arn}
+                   database: rotator_db # Replace with your DB name
+                   host: ${database.endpoint}
+                   port: ${databasePort}
+                   managingUser:
+                     username: managing_user # Replace with your user value
+                     password: manager_password # Replace with your user value behind fn::secret
+                 rotateUsers:
+                   username1: user1 # Replace with your user value
+                   username2: user2 # Replace with your user value`
+    const example = new pulumiservice.Environment(namePrefix + "ExampleRotatorEnvironment", {
+        organization: exampleEnvironment.organization,
+        project: exampleEnvironment.project,
+        name: pulumi.interpolate `${exampleEnvironment.name}-${randomString.result}`,
+        yaml: yaml,
+    })
+}
+
 export const lambdaArn = lambda.arn;
 export const assumedRoleArn = assumedRole.arn;

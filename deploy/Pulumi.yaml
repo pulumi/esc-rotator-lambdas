@@ -20,10 +20,10 @@ template:
     trustedAccount:
       description: This account will be allowed to invoke the lambda
       default: arn:aws:iam::058607598222:root
-    externalId:
+    allowlistedEnvironment:
       description: >-
-        The ESC environment that is allowed to use the rotation lambda.
-        Pulumi will set set an external id with the Pulumi organization and fully qualified ESC environment name when assuming
+        The ESC environment(s) that are allowed to use the rotation lambda.
+        Pulumi will set fully qualified ESC environment name as an IAM external id when assuming
         the role to invoke the lambda like `{pulumi organization}/{esc project}/{esc env name}`.
-        You can use `*` wildcards if you'd like to match more than one environment.
+        You can use `*` as wildcard to match more than one environment. For example, `myOrg/myProject/*` will match all environments in the `myProject` project. 
         See https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html
