@@ -20,11 +20,11 @@ const codeArtifact = aws.s3.getObjectOutput({bucket: lambdaArchiveBucket, key: l
 const database = aws.rds.getClusterOutput({
     clusterIdentifier: rdsId,
 });
-
 const subnetGroup = aws.rds.getSubnetGroupOutput({
     name: database.dbSubnetGroupName,
 });
-
+const databaseSecurityGroupId = database.vpcSecurityGroupIds[0];
+const databasePort = database.port;
 const vpcId = subnetGroup.vpcId;
 let validatedSubnetIds = subnetGroup.subnetIds.apply(async ids => {
     let subnetIds: string[] = [];
@@ -36,10 +36,6 @@ let validatedSubnetIds = subnetGroup.subnetIds.apply(async ids => {
     }
     return subnetIds;
 });
-
-// going to assume the first security group is the one we need to add an incoming rule to.
-const databaseSecurityGroupId = database.vpcSecurityGroupIds[0];
-const databasePort = database.port;
 
 // Create resources
 const namePrefix = "PulumiEscSecretRotatorLambda-"

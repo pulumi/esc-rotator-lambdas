@@ -24,10 +24,7 @@ This Pulumi program deploys the following AWS resources:
 | Parameter                               | Description                                                         |
 |-----------------------------------------|---------------------------------------------------------------------|
 | `aws:region`                            | AWS region for deployment                                           |
-| `vpcId`                                 | VPC where Lambda will be deployed                                   |
-| `subnetIds`                             | Subnets where Lambda will be deployed (private subnets recommended) |
-| `databaseSecurityGroupId`               | Security group ID of the database requiring access                  |
-| `databasePort`                          | Database port (default: 3306 for MySQL)                             |
+| `rdsId`                                 | The ID of the RDS cluster the lambda will proxy access to.          |
 | `externalId`                            | Slug of the environment that is permitted to invoke the rotator     |
 | `lambdaArchiveBucketPrefix`             | Regional S3 bucket prefix containing the Lambda code                |
 | `lambdaArchiveKey`                      | S3 key for the Lambda code archive                                  |
