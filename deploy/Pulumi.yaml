@@ -6,15 +6,8 @@ template:
     aws:region:
       description: The AWS region to deploy into
       default: us-west-2
-    vpcId:
-      description: The VPC ID where the Lambda will be deployed and can access database instances from
-    subnetIds:
-      description: List of subnet IDs where the Lambda will be deployed (private subnets recommended)
-    databaseSecurityGroupId:
-      description: Security group ID of the database instance the Lambda will access
-    databasePort:
-      description: The port that the database is listening on (default is for MySQL)
-      default: "3306"
+    rdsId:
+      description: The ID of the RDS cluster the lambda will proxy access to.
     lambdaArchiveBucketPrefix:
       description: The name prefix of the regional s3 bucket that contains the lambda code archive
       default: public-esc-rotator-lambdas-production
