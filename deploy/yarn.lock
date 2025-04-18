@@ -418,13 +418,6 @@
   dependencies:
     "@pulumi/pulumi" "^3.0.0"
 
-"@pulumi/random@^4.18.0":
-  version "4.18.0"
-  resolved "https://registry.yarnpkg.com/@pulumi/random/-/random-4.18.0.tgz#d04d3a5530ad12fc080a52f286f40fcc9ca1a987"
-  integrity sha512-6joE5/jhadtWmwuMh3YtDB1kA3G4pDLVhk+l5mSxe/kuf+ejQ1w+LnfbpRi9iinwPl2AqzfDp9IheksTxIwzFA==
-  dependencies:
-    "@pulumi/pulumi" "^3.142.0"
-
 "@sigstore/bundle@^2.3.2":
   version "2.3.2"
   resolved "https://registry.yarnpkg.com/@sigstore/bundle/-/bundle-2.3.2.tgz#ad4dbb95d665405fd4a7a02c8a073dbd01e4e95e"

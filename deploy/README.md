@@ -21,15 +21,11 @@ This Pulumi program deploys the following AWS resources:
 
 ## Configuration Parameters
 
-| Parameter                               |Required | Description                                                         |
-|-----------------------------------------|---------|---------------------------------------------------------------------|
-| `aws:region`                            | Y       | AWS region for deployment                                           |
-| `rdsId`                                 | Y       | The ID of the RDS cluster the lambda will proxy access to.          |
-| `lambdaArchiveBucketPrefix`             | Y       | Regional S3 bucket prefix containing the Lambda code                |
-| `lambdaArchiveKey`                      | Y       | S3 key for the Lambda code archive                                  |
-| `lambdaArchiveSigningProfileVersionArn` | Y       | ARN of signing profile for code verification                        |
-| `trustedAccount`                        | Y       | The Pulumi ESC AWS account allowed to invoke the Lambda             |
-| `allowlistedEnvironment`                | N       | Slug of the environment(s) that are permitted to invoke the rotator. You can use `*` as wildcard - `myOrg/myProject/*` for example. Omit to create an example rotator environment.    |
+| Parameter                                   |Required | Description                                                         |
+|---------------------------------------------|---------|---------------------------------------------------------------------|
+| `aws:region`                                | Y       | AWS region for deployment                                           |
+| `esc-rotator-lambda:rdsId`                  | Y       | The ID of the RDS cluster the lambda will proxy access to.          |
+| `esc-rotator-lambda:allowlistedEnvironment` | N       | Slug of the environment(s) that are permitted to invoke the rotator. You can use `*` as wildcard - `myOrg/myProject/*` for example. Omit to create an example rotator environment.    |
 
 ## Manual Deployment Steps
 
