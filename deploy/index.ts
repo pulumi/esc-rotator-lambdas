@@ -12,7 +12,19 @@ const templateConfig = new pulumi.Config("esc-rotator-lambda");
 const awsConfig = new pulumi.Config("aws");
 const awsRegion = awsConfig.require("region");
 const rdsId = templateConfig.require("rdsId");
-const allowlistedEnvironment = templateConfig.get("allowlistedEnvironment") ?? null;
+const environmentName = templateConfig.require("environmentName");
+const allowlistedEnvironment = templateConfig.get("allowlistedEnvironment") ?? pulumi.getOrganization()+"/*";
+
+// Parse environment name
+const envNameSplit = environmentName.split("/");
+if (envNameSplit.length != 2) {
+    throw Error(`Invalid environmentName supplied "${environmentName}" - needs to be in format "myProject/myEnvironment"`)
+}
+const environment = {
+    organization: pulumi.getOrganization(),
+    project: envNameSplit[0],
+    name: envNameSplit[1],
+};
 
 // Retrieve reference to current code artifact from trusted pulumi bucket
 const lambdaArchiveBucket = `${ARCHIVE_BUCKET_PREFIX}-${awsRegion}`
@@ -38,24 +50,6 @@ let validatedSubnetIds = subnetGroup.subnetIds.apply(async ids => {
     }
     return subnetIds;
 });
-
-// Decide whether to create example environment
-let externalId: string
-let exampleEnvironment : {
-    organization: string,
-    project: string,
-    name: string,
-} | null = null;
-if (allowlistedEnvironment) {
-    externalId = allowlistedEnvironment;
-} else {
-    exampleEnvironment = {
-        organization: pulumi.getOrganization(),
-        project: "PulumiEscSecretRotatorLambda",
-        name: "ExampleRotator",
-    };
-    externalId = `${exampleEnvironment.organization}/${exampleEnvironment.project}/${exampleEnvironment.name}-*`;
-}
 
 // Create resources
 const namePrefix = "PulumiEscSecretRotatorLambda-"
@@ -129,7 +123,7 @@ const assumedRole = new aws.iam.Role(namePrefix + "InvocationRole", {
             },
             Condition: {
                 StringLike: {
-                    "sts:ExternalId": externalId,
+                    "sts:ExternalId": allowlistedEnvironment,
                 },
             },
         }],
@@ -163,36 +157,34 @@ const assumedRole = new aws.iam.Role(namePrefix + "InvocationRole", {
         }),
     }],
 });
-if (exampleEnvironment) {
-    const rotatorType = databasePort.apply(port => port === 5432 ? "postgres" : "mysql");
-    const yaml = pulumi.interpolate
-        `values:
-           exampleRotator:
-             fn::rotate::${rotatorType}:
-               inputs:
-                 database:
-                   connector:
-                     awsLambda:
-                       roleArn: ${assumedRole.arn}
-                       lambdaArn: ${lambda.arn}
-                   database: rotator_db # Replace with your DB name
-                   host: ${database.endpoint}
-                   port: ${databasePort}
-                   managingUser:
-                     username: managing_user # Replace with your user value
-                     password: manager_password # Replace with your user value behind fn::secret
-                 rotateUsers:
-                   username1: user1 # Replace with your user value
-                   username2: user2 # Replace with your user value`
-    const example = new pulumiservice.Environment(namePrefix + "ExampleRotatorEnvironment", {
-        organization: exampleEnvironment.organization,
-        project: exampleEnvironment.project,
-        name: pulumi.interpolate `${exampleEnvironment.name}-${pulumi.getStack()}`,
-        yaml: yaml,
-    }, {
-        deleteBeforeReplace: true,
-    })
-}
+const rotatorType = databasePort.apply(port => port === 5432 ? "postgres" : "mysql");
+const yaml = pulumi.interpolate
+    `values:
+       dbRotator:
+         fn::rotate::${rotatorType}:
+           inputs:
+             database:
+               connector:
+                 awsLambda:
+                   roleArn: ${assumedRole.arn}
+                   lambdaArn: ${lambda.arn}
+               database: rotator_db # Replace with your DB name
+               host: ${database.endpoint}
+               port: ${databasePort}
+               managingUser:
+                 username: managing_user # Replace with your user value
+                 password: manager_password # Replace with your user value behind fn::secret
+             rotateUsers:
+               username1: user1 # Replace with your user value
+               username2: user2 # Replace with your user value`
+const _ = new pulumiservice.Environment(namePrefix + "RotatorEnvironment", {
+    organization: environment.organization,
+    project: environment.project,
+    name: environment.name,
+    yaml: yaml,
+}, {
+    deleteBeforeReplace: true,
+})
 
 export const lambdaArn = lambda.arn;
 export const assumedRoleArn = assumedRole.arn;

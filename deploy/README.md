@@ -25,7 +25,8 @@ This Pulumi program deploys the following AWS resources:
 |---------------------------------------------|---------|---------------------------------------------------------------------|
 | `aws:region`                                | Y       | AWS region for deployment                                           |
 | `esc-rotator-lambda:rdsId`                  | Y       | The ID of the RDS cluster the lambda will proxy access to.          |
-| `esc-rotator-lambda:allowlistedEnvironment` | N       | Slug of the environment(s) that are permitted to invoke the rotator. You can use `*` as wildcard - `myOrg/myProject/*` for example. Omit to create an example rotator environment.    |
+| `esc-rotator-lambda:environmentName`        | Y       | Name of the rotator environment to be created. Format needs to be `myProject/myEnvironment`. |
+| `esc-rotator-lambda:allowlistedEnvironment` | N       | Slug of the environment(s) that are permitted to invoke the rotator. You can use `*` as wildcard - `myOrg/myProject/*` for example. |
 
 ## Manual Deployment Steps
 

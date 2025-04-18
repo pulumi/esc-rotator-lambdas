@@ -8,6 +8,8 @@ template:
       default: us-west-2
     rdsId:
       description: The ID of the RDS cluster the lambda will proxy access to.
+    environmentName:
+      description: Name of the rotator environment to be created. Format needs to be `myProject/myEnvironment`.
     allowlistedEnvironment:
       description: >-
         The ESC environment(s) that are allowed to use the rotation lambda.
@@ -15,4 +17,4 @@ template:
         the role to invoke the lambda like `{pulumi organization}/{esc project}/{esc env name}`.
         You can use `*` as wildcard to match more than one environment. For example, `myOrg/myProject/*` will match all environments in the `myProject` project. 
         See https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html
-        If you leave this config empty, an example rotator environment will be created, and its full name will be set as the `allowlistedEnvironment`.
+        If you leave this config empty, allowlist will be scoped down to your organization only, like so `myOrg/*`.
