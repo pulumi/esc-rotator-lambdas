@@ -8,22 +8,13 @@ template:
       default: us-west-2
     rdsId:
       description: The ID of the RDS cluster the lambda will proxy access to.
-    lambdaArchiveBucketPrefix:
-      description: The name prefix of the regional s3 bucket that contains the lambda code archive
-      default: public-esc-rotator-lambdas-production
-    lambdaArchiveKey:
-      description: The key of the lambda archive to deploy
-      default: aws-lambda/latest.zip
-    lambdaArchiveSigningProfileVersionArn:
-      description: This signing profile is used to verify the authenticity of the lambda bundle
-      default: arn:aws:signer:us-west-2:388588623842:/signing-profiles/pulumi_esc_production_20250325212043887700000001/jva5X9nqMa
-    trustedAccount:
-      description: This account will be allowed to invoke the lambda
-      default: arn:aws:iam::058607598222:root
-    externalId:
+    environmentName:
+      description: Name of the rotator environment to be created. Format needs to be `myProject/myEnvironment`.
+    allowlistedEnvironment:
       description: >-
-        The ESC environment that is allowed to use the rotation lambda.
-        Pulumi will set set an external id with the Pulumi organization and fully qualified ESC environment name when assuming
+        The ESC environment(s) that are allowed to use the rotation lambda.
+        Pulumi will set fully qualified ESC environment name as an IAM external id when assuming
         the role to invoke the lambda like `{pulumi organization}/{esc project}/{esc env name}`.
-        You can use `*` wildcards if you'd like to match more than one environment.
+        You can use `*` as wildcard to match more than one environment. For example, `myOrg/myProject/*` will match all environments in the `myProject` project. 
         See https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html
+        If you leave this config empty, allowlist will be scoped down to your organization only, like so `myOrg/*`.

@@ -21,15 +21,12 @@ This Pulumi program deploys the following AWS resources:
 
 ## Configuration Parameters
 
-| Parameter                               | Description                                                         |
-|-----------------------------------------|---------------------------------------------------------------------|
-| `aws:region`                            | AWS region for deployment                                           |
-| `rdsId`                                 | The ID of the RDS cluster the lambda will proxy access to.          |
-| `externalId`                            | Slug of the environment that is permitted to invoke the rotator     |
-| `lambdaArchiveBucketPrefix`             | Regional S3 bucket prefix containing the Lambda code                |
-| `lambdaArchiveKey`                      | S3 key for the Lambda code archive                                  |
-| `lambdaArchiveSigningProfileVersionArn` | ARN of signing profile for code verification                        |
-| `trustedAccount`                        | The Pulumi ESC AWS account allowed to invoke the Lambda             |
+| Parameter                                   |Required | Description                                                         |
+|---------------------------------------------|---------|---------------------------------------------------------------------|
+| `aws:region`                                | Y       | AWS region for deployment                                           |
+| `esc-rotator-lambda:rdsId`                  | Y       | The ID of the RDS cluster the lambda will proxy access to.          |
+| `esc-rotator-lambda:environmentName`        | Y       | Name of the rotator environment to be created. Format needs to be `myProject/myEnvironment`. |
+| `esc-rotator-lambda:allowlistedEnvironment` | N       | Slug of the environment(s) that are permitted to invoke the rotator. You can use `*` as wildcard - `myOrg/myProject/*` for example. |
 
 ## Manual Deployment Steps
 
@@ -89,7 +86,7 @@ Allow Pulumi ESC to securely invoke the Lambda
 1. In IAM, create a new role:
     - Name: `PulumiESCRotatorLambdaInvocationRole`
     - Trust relationship: Allow Pulumi's AWS account id (`058607598222`) to assume this role.
-    - Add a ExternalId condition on the role containing the environment slug that will be allowed to use the rotator.
+    - Add a ExternalId condition on the role containing the `allowlistedEnvironment` slug that will be allowed to use the rotator. See Configuration Parameters for more details.
       Pulumi will use an [external id](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html)
       containing the originating ESC environment name when assuming this role: `{pulumi organization}/{esc project}/{esc env name}`.
       If you choose, use `StringLike` in the condition to use a wildcard for matching multiple environments.

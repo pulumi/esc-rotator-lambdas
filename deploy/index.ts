@@ -1,20 +1,34 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as pulumiservice from "@pulumi/pulumiservice";
 import * as aws from "@pulumi/aws";
+
+const ARCHIVE_BUCKET_PREFIX = "public-esc-rotator-lambdas-production";
+const ARCHIVE_KEY = "aws-lambda/latest.zip";
+const ARCHIVE_SIGNING_PROFILE_VERSION_ARN = "arn:aws:signer:us-west-2:388588623842:/signing-profiles/pulumi_esc_production_20250325212043887700000001/jva5X9nqMa";
+const TRUSTED_PULUMI_ACCOUNT = "arn:aws:iam::058607598222:root";
 
 // Load configs
 const templateConfig = new pulumi.Config("esc-rotator-lambda");
 const awsConfig = new pulumi.Config("aws");
 const awsRegion = awsConfig.require("region");
 const rdsId = templateConfig.require("rdsId");
-const lambdaArchiveBucketPrefix = templateConfig.require("lambdaArchiveBucketPrefix");
-const lambdaArchiveKey = templateConfig.require("lambdaArchiveKey");
-const lambdaArchiveSigningProfileVersionArn = templateConfig.require("lambdaArchiveSigningProfileVersionArn");
-const trustedAccount = templateConfig.require("trustedAccount");
-const externalId = templateConfig.require("externalId");
+const environmentName = templateConfig.require("environmentName");
+const allowlistedEnvironment = templateConfig.get("allowlistedEnvironment") ?? pulumi.getOrganization()+"/*";
+
+// Parse environment name
+const envNameSplit = environmentName.split("/");
+if (envNameSplit.length != 2) {
+    throw Error(`Invalid environmentName supplied "${environmentName}" - needs to be in format "myProject/myEnvironment"`)
+}
+const environment = {
+    organization: pulumi.getOrganization(),
+    project: envNameSplit[0],
+    name: envNameSplit[1],
+};
 
 // Retrieve reference to current code artifact from trusted pulumi bucket
-const lambdaArchiveBucket = `${lambdaArchiveBucketPrefix}-${awsRegion}`
-const codeArtifact = aws.s3.getObjectOutput({bucket: lambdaArchiveBucket, key: lambdaArchiveKey});
+const lambdaArchiveBucket = `${ARCHIVE_BUCKET_PREFIX}-${awsRegion}`
+const codeArtifact = aws.s3.getObjectOutput({bucket: lambdaArchiveBucket, key: ARCHIVE_KEY});
 
 // Introspect RDS to discover network settings
 const database = aws.rds.getClusterOutput({
@@ -42,7 +56,7 @@ const namePrefix = "PulumiEscSecretRotatorLambda-"
 const codeSigningConfig = new aws.lambda.CodeSigningConfig(namePrefix + "CodeSigningConfig", {
     description: "Pulumi ESC rotator-lambda signature - https://github.com/pulumi/esc-rotator-lambdas",
     allowedPublishers: {
-        signingProfileVersionArns: [lambdaArchiveSigningProfileVersionArn],
+        signingProfileVersionArns: [ARCHIVE_SIGNING_PROFILE_VERSION_ARN],
     },
     policies: {
         untrustedArtifactOnDeployment: "Enforce",
@@ -105,11 +119,11 @@ const assumedRole = new aws.iam.Role(namePrefix + "InvocationRole", {
             Action: "sts:AssumeRole",
             Effect: "Allow",
             Principal: {
-                AWS: trustedAccount,
+                AWS: TRUSTED_PULUMI_ACCOUNT,
             },
             Condition: {
                 StringLike: {
-                    "sts:ExternalId": externalId,
+                    "sts:ExternalId": allowlistedEnvironment,
                 },
             },
         }],
@@ -143,5 +157,34 @@ const assumedRole = new aws.iam.Role(namePrefix + "InvocationRole", {
         }),
     }],
 });
+const rotatorType = databasePort.apply(port => port === 5432 ? "postgres" : "mysql");
+const yaml = pulumi.interpolate
+    `values:
+       dbRotator:
+         fn::rotate::${rotatorType}:
+           inputs:
+             database:
+               connector:
+                 awsLambda:
+                   roleArn: ${assumedRole.arn}
+                   lambdaArn: ${lambda.arn}
+               database: rotator_db # Replace with your DB name
+               host: ${database.endpoint}
+               port: ${databasePort}
+               managingUser:
+                 username: managing_user # Replace with your user value
+                 password: manager_password # Replace with your user value behind fn::secret
+             rotateUsers:
+               username1: user1 # Replace with your user value
+               username2: user2 # Replace with your user value`
+const _ = new pulumiservice.Environment(namePrefix + "RotatorEnvironment", {
+    organization: environment.organization,
+    project: environment.project,
+    name: environment.name,
+    yaml: yaml,
+}, {
+    deleteBeforeReplace: true,
+})
+
 export const lambdaArn = lambda.arn;
 export const assumedRoleArn = assumedRole.arn;
