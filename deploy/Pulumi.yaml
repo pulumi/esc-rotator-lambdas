@@ -10,6 +10,10 @@ template:
       description: The ID of the RDS cluster the lambda will proxy access to.
     environmentName:
       description: Name of the rotator environment to be created. Format needs to be `myProject/myEnvironment`.
+    managingCredsEnvironmentName:
+      description: >-
+        Name of the managing credentials environment to be created. Format needs to be `myProject/myEnvironment`.
+        You can skip specifying this one, and it will be derived from `environmentName`.
     allowlistedEnvironment:
       description: >-
         The ESC environment(s) that are allowed to use the rotation lambda.
