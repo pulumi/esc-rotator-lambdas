@@ -13,9 +13,10 @@ const awsConfig = new pulumi.Config("aws");
 const awsRegion = awsConfig.require("region");
 const rdsId = templateConfig.require("rdsId");
 const environmentName = templateConfig.require("environmentName");
+const credsEnvironmentName = templateConfig.get("managingCredsEnvironmentName") ?? environmentName + "ManagingCreds";
 const allowlistedEnvironment = templateConfig.get("allowlistedEnvironment") ?? pulumi.getOrganization()+"/*";
 
-// Parse environment name
+// Parse environment names
 const envNameSplit = environmentName.split("/");
 if (envNameSplit.length != 2) {
     throw Error(`Invalid environmentName supplied "${environmentName}" - needs to be in format "myProject/myEnvironment"`)
@@ -24,6 +25,15 @@ const environment = {
     organization: pulumi.getOrganization(),
     project: envNameSplit[0],
     name: envNameSplit[1],
+};
+const credsNameSplit = credsEnvironmentName.split("/");
+if (credsNameSplit.length != 2) {
+    throw Error(`Invalid managingCredsEnvironmentName supplied "${credsEnvironmentName}" - needs to be in format "myProject/myEnvironment"`)
+}
+const credsEnvironment = {
+    organization: pulumi.getOrganization(),
+    project: credsNameSplit[0],
+    name: credsNameSplit[1],
 };
 
 // Retrieve reference to current code artifact from trusted pulumi bucket
@@ -157,7 +167,21 @@ const assumedRole = new aws.iam.Role(namePrefix + "InvocationRole", {
         }),
     }],
 });
+const credsYaml = pulumi.interpolate
+    `values:
+       managingUser:
+         username: managing_user # Replace with your user value
+         password: manager_password # Replace with your user value behind fn::secret`
+const creds = new pulumiservice.Environment(namePrefix + "RotatorEnvironmentManagingCreds", {
+    organization: credsEnvironment.organization,
+    project: credsEnvironment.project,
+    name: credsEnvironment.name,
+    yaml: credsYaml,
+}, {
+    deleteBeforeReplace: true,
+})
 const rotatorType = databasePort.apply(port => port === 5432 ? "postgres" : "mysql");
+const managingUserImport = "${environments." + `${credsEnvironment.project}.${credsEnvironment.name}.managingUser}`
 const yaml = pulumi.interpolate
     `values:
        dbRotator:
@@ -171,9 +195,7 @@ const yaml = pulumi.interpolate
                database: rotator_db # Replace with your DB name
                host: ${database.endpoint}
                port: ${databasePort}
-               managingUser:
-                 username: managing_user # Replace with your user value
-                 password: manager_password # Replace with your user value behind fn::secret
+               managingUser: ${managingUserImport}
              rotateUsers:
                username1: user1 # Replace with your user value
                username2: user2 # Replace with your user value`
@@ -184,6 +206,7 @@ const _ = new pulumiservice.Environment(namePrefix + "RotatorEnvironment", {
     yaml: yaml,
 }, {
     deleteBeforeReplace: true,
+    dependsOn: creds,
 })
 
 export const lambdaArn = lambda.arn;
