@@ -1,11 +1,12 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as pulumiservice from "@pulumi/pulumiservice";
 import * as aws from "@pulumi/aws";
+import * as path from "path";
 
 const ARCHIVE_BUCKET_PREFIX = "public-esc-rotator-lambdas-production";
 const ARCHIVE_KEY = "aws-lambda/latest.zip";
 const ARCHIVE_SIGNING_PROFILE_VERSION_ARN = "arn:aws:signer:us-west-2:388588623842:/signing-profiles/pulumi_esc_production_20250325212043887700000001/jva5X9nqMa";
-const TRUSTED_PULUMI_ACCOUNT = "arn:aws:iam::058607598222:root";
+const organization = pulumi.getOrganization()
 
 // Load configs
 const templateConfig = new pulumi.Config("esc-rotator-lambda");
@@ -14,7 +15,8 @@ const awsRegion = awsConfig.require("region");
 const rdsId = templateConfig.require("rdsId");
 const environmentName = templateConfig.require("environmentName");
 const credsEnvironmentName = templateConfig.get("managingCredsEnvironmentName") ?? environmentName + "ManagingCreds";
-const allowlistedEnvironment = templateConfig.get("allowlistedEnvironment") ?? pulumi.getOrganization()+"/*";
+const backendUrl = templateConfig.get("backendUrl") ?? "https://api.pulumi.com";
+const oidcUrl = new URL(`oidc`, backendUrl).toString();
 
 // Parse environment names
 const envNameSplit = environmentName.split("/");
@@ -22,7 +24,7 @@ if (envNameSplit.length != 2) {
     throw Error(`Invalid environmentName supplied "${environmentName}" - needs to be in format "myProject/myEnvironment"`)
 }
 const environment = {
-    organization: pulumi.getOrganization(),
+    organization: organization,
     project: envNameSplit[0],
     name: envNameSplit[1],
 };
@@ -31,7 +33,7 @@ if (credsNameSplit.length != 2) {
     throw Error(`Invalid managingCredsEnvironmentName supplied "${credsEnvironmentName}" - needs to be in format "myProject/myEnvironment"`)
 }
 const credsEnvironment = {
-    organization: pulumi.getOrganization(),
+    organization: organization,
     project: credsNameSplit[0],
     name: credsNameSplit[1],
 };
@@ -121,21 +123,48 @@ const lambda = new aws.lambda.Function(namePrefix + "Function", {
         securityGroupIds: [lambdaSecurityGroup.id],
     },
 });
+let oidcProviderArn: pulumi.Output<String>
+const oidcAudience = "aws:"+organization;
+oidcProviderArn = pulumi.output(
+    aws.iam.getOpenIdConnectProvider({ url: oidcUrl }, { async: false })
+    .then(
+        res => { 
+            if (!res.clientIdLists.includes(oidcAudience)) {
+                throw Error(`OIDC provider exists, but is not configured for the current organization.
+                    Either add ${oidcAudience} to the audience list, or remove your provider and let this program create it`)
+            }
+            return res.arn 
+        },
+        _ => {
+            return new aws.iam.OpenIdConnectProvider(namePrefix + "OidcProvider", {
+                url: oidcUrl,
+                clientIdLists: [oidcAudience],
+            }, {
+                retainOnDelete: true,
+            }).arn;
+        }
+    )
+);
+const oidcUrlNoProtocol = oidcUrl.replace("https://", "");
 const assumedRole = new aws.iam.Role(namePrefix + "InvocationRole", {
     description: "Allow Pulumi ESC to invoke/manage the rotator lambda",
-    assumeRolePolicy: JSON.stringify({
+    assumeRolePolicy: pulumi.jsonStringify({
         Version: "2012-10-17",
         Statement: [{
-            Action: "sts:AssumeRole",
+            Action: "sts:AssumeRoleWithWebIdentity",
             Effect: "Allow",
             Principal: {
-                AWS: TRUSTED_PULUMI_ACCOUNT,
+                Federated: oidcProviderArn,
             },
             Condition: {
-                StringLike: {
-                    "sts:ExternalId": allowlistedEnvironment,
+                StringEquals: {
+                    [`${oidcUrlNoProtocol}:sub`]: [
+                        `pulumi:environments:org:${organization}:env:${credsEnvironment.project}/${credsEnvironment.name}`,
+                        `pulumi:environments:org:${organization}:env:${environment.project}/${environment.name}`
+                    ],
+                    [`${oidcUrlNoProtocol}:aud`]: oidcAudience,
                 },
-            },
+            }
         }],
     }),
     inlinePolicies: [{
@@ -167,11 +196,20 @@ const assumedRole = new aws.iam.Role(namePrefix + "InvocationRole", {
         }),
     }],
 });
+const psp = new pulumiservice.Provider("psp", {
+    apiUrl: backendUrl
+})
 const credsYaml = pulumi.interpolate
     `values:
        managingUser:
          username: managing_user # Replace with your user value
-         password: manager_password # Replace with your user value behind fn::secret`
+         password: manager_password # Replace with your user value behind fn::secret
+       awsLogin:
+         fn::open::aws-login:
+           oidc:
+             duration: 1h
+             roleArn: ${assumedRole.arn}
+             sessionName: pulumi-esc-secret-rotator`
 const creds = new pulumiservice.Environment(namePrefix + "RotatorEnvironmentManagingCreds", {
     organization: credsEnvironment.organization,
     project: credsEnvironment.project,
@@ -179,9 +217,11 @@ const creds = new pulumiservice.Environment(namePrefix + "RotatorEnvironmentMana
     yaml: credsYaml,
 }, {
     deleteBeforeReplace: true,
+    provider: psp,
 })
 const rotatorType = databasePort.apply(port => port === 5432 ? "postgres" : "mysql");
 const managingUserImport = "${environments." + `${credsEnvironment.project}.${credsEnvironment.name}.managingUser}`
+const awsLoginImport = "${environments." + `${credsEnvironment.project}.${credsEnvironment.name}.awsLogin}`
 const yaml = pulumi.interpolate
     `values:
        dbRotator:
@@ -190,7 +230,7 @@ const yaml = pulumi.interpolate
              database:
                connector:
                  awsLambda:
-                   roleArn: ${assumedRole.arn}
+                   login: ${awsLoginImport}
                    lambdaArn: ${lambda.arn}
                database: rotator_db # Replace with your DB name
                host: ${database.endpoint}
@@ -207,6 +247,7 @@ const _ = new pulumiservice.Environment(namePrefix + "RotatorEnvironment", {
 }, {
     deleteBeforeReplace: true,
     dependsOn: creds,
+    provider: psp,
 })
 
 export const lambdaArn = lambda.arn;
