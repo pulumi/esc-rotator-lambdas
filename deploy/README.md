@@ -29,6 +29,10 @@ This Pulumi program deploys the following AWS resources:
 | `esc-rotator-lambda:managingCredsEnvironmentName` | N       | Name of the environment that will contain the privileged managing user credentials used to rotate the user DB credentials. Format of the name needs to be `myProject/myEnvironment`. You can skip specifying this one, and it will be derived from `environmentName`. |
 | `esc-rotator-lambda:backendUrl`                   | N       | The Pulumi Cloud URL. Change this URL ONLY if you are self-hosting Pulumi Cloud. |
 
+### Finding RDS DB Identifier
+![alt text](images/db_identifier.png)
+To find your RDS DB Identifier to put into the configuration, simply navigate to RDS in the console and copy the identifier.
+
 ## Manual Deployment Steps
 
 If you prefer to deploy these resources manually rather than using Pulumi, follow these steps:
