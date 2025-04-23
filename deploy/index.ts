@@ -1,7 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as pulumiservice from "@pulumi/pulumiservice";
 import * as aws from "@pulumi/aws";
-import * as path from "path";
 
 const ARCHIVE_BUCKET_PREFIX = "public-esc-rotator-lambdas-production";
 const ARCHIVE_KEY = "aws-lambda/latest.zip";
@@ -9,19 +8,19 @@ const ARCHIVE_SIGNING_PROFILE_VERSION_ARN = "arn:aws:signer:us-west-2:3885886238
 const organization = pulumi.getOrganization()
 
 // Load configs
-const templateConfig = new pulumi.Config("esc-rotator-lambda");
+const templateConfig = new pulumi.Config();
 const awsConfig = new pulumi.Config("aws");
 const awsRegion = awsConfig.require("region");
-const rdsId = templateConfig.require("rdsId");
-const environmentName = templateConfig.require("environmentName");
-const credsEnvironmentName = templateConfig.get("managingCredsEnvironmentName") ?? environmentName + "ManagingCreds";
+const rdsDbIdentifier = templateConfig.require("rdsDbIdentifier");
+const rotatorEnvironmentName = templateConfig.require("rotatedSecretsEnvironmentName");
+const credsEnvironmentName = templateConfig.get("managingCredsEnvironmentName") ?? rotatorEnvironmentName + "ManagingCreds";
 const backendUrl = templateConfig.get("backendUrl") ?? "https://api.pulumi.com";
 const oidcUrl = new URL(`oidc`, backendUrl).toString();
 
 // Parse environment names
-const envNameSplit = environmentName.split("/");
+const envNameSplit = rotatorEnvironmentName.split("/");
 if (envNameSplit.length != 2) {
-    throw Error(`Invalid environmentName supplied "${environmentName}" - needs to be in format "myProject/myEnvironment"`)
+    throw Error(`Invalid environmentName supplied "${rotatorEnvironmentName}" - needs to be in format "myProject/myEnvironment"`)
 }
 const environment = {
     organization: organization,
@@ -44,7 +43,7 @@ const codeArtifact = aws.s3.getObjectOutput({bucket: lambdaArchiveBucket, key: A
 
 // Introspect RDS to discover network settings
 const database = aws.rds.getClusterOutput({
-    clusterIdentifier: rdsId,
+    clusterIdentifier: rdsDbIdentifier,
 });
 const subnetGroup = aws.rds.getSubnetGroupOutput({
     name: database.dbSubnetGroupName,

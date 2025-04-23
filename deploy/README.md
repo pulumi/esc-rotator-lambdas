@@ -21,13 +21,13 @@ This Pulumi program deploys the following AWS resources:
 
 ## Configuration Parameters
 
-| Parameter                                        |Required | Description                                                         |
-|--------------------------------------------------|---------|---------------------------------------------------------------------|
-| `aws:region`                                     | Y       | AWS region for deployment                                           |
-| `esc-rotator-lambda:rdsId`                       | Y       | The ID of the RDS cluster the lambda will proxy access to.          |
-| `esc-rotator-lambda:environmentName`             | Y       | Name of the rotator environment to be created. Format needs to be `myProject/myEnvironment`. |
-| `esc-rotator-lambda:managingCredsEnvironmentName`| N       | Name of the managing credentials environment to be created. Format needs to be `myProject/myEnvironment`. You can skip specifying this one, and it will be derived from `environmentName`. |
-| `esc-rotator-lambda:backendUrl`                  | N       | The Pulumi backend URL. Unless you use Pulumi self-hosted, leave this as default. |
+| Parameter                                         |Required | Description                                                         |
+|---------------------------------------------------|---------|---------------------------------------------------------------------|
+| `aws:region`                                      | Y       | AWS region for deployment                                           |
+| `esc-rotator-lambda:rdsDbIdentifier`              | Y       | The database identifier of the RDS cluster the lambda will rotate credentials in. |
+| `esc-rotator-lambda:rotatedSecretsEnvironmentName`| Y       | Name of the environment that will rotate the DB credentials. Format of the name needs to be `myProject/myEnvironment`. |
+| `esc-rotator-lambda:managingCredsEnvironmentName` | N       | Name of the environment that will contain the privileged managing user credentials used to rotate the user DB credentials. Format of the name needs to be `myProject/myEnvironment`. You can skip specifying this one, and it will be derived from `environmentName`. |
+| `esc-rotator-lambda:backendUrl`                   | N       | The Pulumi Cloud URL. Change this URL ONLY if you are self-hosting Pulumi Cloud. |
 
 ## Manual Deployment Steps
 
