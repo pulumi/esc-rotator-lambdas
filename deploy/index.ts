@@ -158,10 +158,6 @@ const assumedRole = new aws.iam.Role(namePrefix + "InvocationRole", {
             },
             Condition: {
                 StringEquals: {
-                    [`${oidcUrlNoProtocol}:sub`]: [
-                        `pulumi:environments:org:${organization}:env:${credsEnvironment.project}/${credsEnvironment.name}`,
-                        `pulumi:environments:org:${organization}:env:${environment.project}/${environment.name}`
-                    ],
                     [`${oidcUrlNoProtocol}:aud`]: oidcAudience,
                 },
             }
@@ -196,7 +192,7 @@ const assumedRole = new aws.iam.Role(namePrefix + "InvocationRole", {
         }),
     }],
 });
-const psp = new pulumiservice.Provider("psp", {
+const psp = new pulumiservice.Provider(namePrefix + "PSP", {
     apiUrl: backendUrl
 })
 const credsYaml = pulumi.interpolate
