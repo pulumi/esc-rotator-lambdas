@@ -14,11 +14,7 @@ template:
       description: >-
         Name of the managing credentials environment to be created. Format needs to be `myProject/myEnvironment`.
         You can skip specifying this one, and it will be derived from `environmentName`.
-    allowlistedEnvironment:
+    backendUrl:
+      default: https://api.pulumi.com
       description: >-
-        The ESC environment(s) that are allowed to use the rotation lambda.
-        Pulumi will set fully qualified ESC environment name as an IAM external id when assuming
-        the role to invoke the lambda like `{pulumi organization}/{esc project}/{esc env name}`.
-        You can use `*` as wildcard to match more than one environment. For example, `myOrg/myProject/*` will match all environments in the `myProject` project. 
-        See https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html
-        If you leave this config empty, allowlist will be scoped down to your organization only, like so `myOrg/*`.
+        The Pulumi backend URL. Unless you use Pulumi self-hosted, leave this as default.
