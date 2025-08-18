@@ -25,13 +25,15 @@ type PostgresUser struct {
 }
 
 func Rotate(ctx context.Context, request PostgresRotateParams) error {
-	db, err := sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
-		url.QueryEscape(request.ManagingUser.Username),
-		url.QueryEscape(request.ManagingUser.Password),
-		request.Host,
-		request.Port,
-		request.Database,
-	))
+	u := &url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(request.ManagingUser.Username, request.ManagingUser.Password),
+		Host:     fmt.Sprintf("%s:%d", request.Host, request.Port),
+		Path:     request.Database,
+		RawQuery: "sslmode=disable",
+	}
+
+	db, err := sql.Open("postgres", u.String())
 	if err != nil {
 		return err
 	}
