@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -56,18 +57,18 @@ func TestRotate(t *testing.T) {
 	host, port := setupDatabaseInstance(t)
 
 	// Request a rotation
-	newPassword := "new_password"
+	newPassword := "new_password!@#"
 	err := Rotate(context.Background(), PostgresRotateParams{
 		Host:     host,
 		Port:     port,
 		Database: "credential_rotation_test",
 		ManagingUser: PostgresUser{
 			Username: "managing_user",
-			Password: "manager_password",
+			Password: "manager_password!@#",
 		},
 		RotateUser: PostgresUser{
 			Username:    "target_user",
-			Password:    "initial_password",
+			Password:    "initial_password!@#",
 			NewPassword: &newPassword,
 		},
 	})
@@ -76,7 +77,7 @@ func TestRotate(t *testing.T) {
 	}
 
 	// Verify rotation succeeded by attempting to log in with the new password
-	db, err := sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "target_user", newPassword, host, port, "credential_rotation_test"))
+	db, err := sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "target_user", url.QueryEscape(newPassword), host, port, "credential_rotation_test"))
 	if err != nil {
 		t.Fatal(err)
 	}

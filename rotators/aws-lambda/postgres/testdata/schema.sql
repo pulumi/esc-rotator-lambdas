@@ -14,10 +14,10 @@ CREATE TABLE IF NOT EXISTS test_data
 
 -- Create Users with appropriate privileges
 -- Target User (with reduced privileges - only SELECT, INSERT, UPDATE on test_data)
-CREATE USER target_user WITH PASSWORD 'initial_password';
+CREATE USER target_user WITH PASSWORD 'initial_password!@#';
 GRANT SELECT, INSERT, UPDATE ON test_data TO target_user;
 
 -- Managing User (with privileges to alter the target user)
-CREATE USER managing_user WITH PASSWORD 'manager_password';
+CREATE USER managing_user WITH PASSWORD 'manager_password!@#';
 ALTER USER managing_user WITH CREATEROLE;
 GRANT target_user TO managing_user WITH ADMIN OPTION;

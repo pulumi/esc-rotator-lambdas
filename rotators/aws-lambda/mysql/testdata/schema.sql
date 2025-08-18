@@ -13,12 +13,12 @@ CREATE TABLE IF NOT EXISTS test_data
 );
 
 -- Create Target User (with reduced privileges - only SELECT, INSERT, UPDATE on test_data)
-CREATE USER IF NOT EXISTS 'target_user'@'%' IDENTIFIED BY 'initial_password';
+CREATE USER IF NOT EXISTS 'target_user'@'%' IDENTIFIED BY 'initial_password!@#';
 GRANT SELECT, INSERT, UPDATE
     ON credential_rotation_test.test_data
     TO 'target_user'@'%';
 
 -- Create Managing User (with privileges to alter the target user)
-CREATE USER IF NOT EXISTS 'managing_user'@'%' IDENTIFIED BY 'manager_password';
+CREATE USER IF NOT EXISTS 'managing_user'@'%' IDENTIFIED BY 'manager_password!@#';
 GRANT ALTER ON credential_rotation_test.* TO 'managing_user'@'%';
 GRANT CREATE USER ON *.* TO 'managing_user'@'%';
