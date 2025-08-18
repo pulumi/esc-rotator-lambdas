@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 
 	"github.com/lib/pq"
 )
@@ -25,8 +26,8 @@ type PostgresUser struct {
 
 func Rotate(ctx context.Context, request PostgresRotateParams) error {
 	db, err := sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
-		request.ManagingUser.Username,
-		request.ManagingUser.Password,
+		url.QueryEscape(request.ManagingUser.Username),
+		url.QueryEscape(request.ManagingUser.Password),
 		request.Host,
 		request.Port,
 		request.Database,

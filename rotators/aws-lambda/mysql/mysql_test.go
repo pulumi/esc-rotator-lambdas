@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	mysqltc "github.com/testcontainers/testcontainers-go/modules/mysql"
 	"io"
 	"path/filepath"
 	"strconv"
 	"testing"
+
+	_ "github.com/go-sql-driver/mysql"
+	mysqltc "github.com/testcontainers/testcontainers-go/modules/mysql"
 )
 
 // Create a temporary MySQL container and run the testdata/schema.sql migration to initialize it.
@@ -49,18 +50,18 @@ func TestRotate(t *testing.T) {
 	host, port := setupDatabaseInstance(t)
 
 	// Request a rotation
-	newPassword := "new_password"
+	newPassword := "new_password!@#"
 	err := Rotate(context.Background(), MysqlRotateParams{
 		Host:     host,
 		Port:     port,
 		Database: "credential_rotation_test",
 		ManagingUser: MysqlUser{
 			Username: "managing_user",
-			Password: "manager_password",
+			Password: "manager_password!@#",
 		},
 		RotateUser: MysqlUser{
 			Username:    "target_user",
-			Password:    "initial_password",
+			Password:    "initial_password!@#",
 			NewPassword: &newPassword,
 		},
 	})
